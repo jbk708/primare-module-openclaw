@@ -17,8 +17,7 @@ from src.primare_module_openclaw.main import app
 
 @pytest.fixture()
 def client():
-    """TestClient wrapping the shim app."""
-    with TestClient(app, raise_server_exceptions=True) as c:
+    with TestClient(app) as c:
         yield c
 
 

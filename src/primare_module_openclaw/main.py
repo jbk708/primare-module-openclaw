@@ -7,13 +7,12 @@ Serves three endpoints alongside the upstream OpenClaw gateway process
   /health  — delegates to upstream GET /readyz; 200 → 200, else 503
   /metrics — Prometheus text exposition with module_healthy gauge
 
-A background asyncio task polls /readyz every 10 s and updates the
-module_healthy gauge so Prometheus can scrape stale state without waiting
-for an in-band request to the /health endpoint.
+A background asyncio task polls /readyz every POLL_INTERVAL_SECONDS and
+updates the module_healthy gauge so Prometheus can scrape stale state
+without waiting for an in-band request to the /health endpoint.
 """
 
 import asyncio
-import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -22,12 +21,7 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 
-logger = logging.getLogger(__name__)
-
-# Module identity — baked by Dockerfile ARG WRAPPER_VERSION.
 WRAPPER_VERSION = os.environ.get("WRAPPER_VERSION", "2026.4.14-1")
-
-# Upstream gateway address (supervisor runs it on 18789).
 UPSTREAM_READYZ = "http://127.0.0.1:18789/readyz"
 POLL_INTERVAL_SECONDS = 10
 POLL_TIMEOUT_SECONDS = 2
@@ -44,7 +38,7 @@ _gauge = MODULE_HEALTHY.labels(module="openclaw", version=WRAPPER_VERSION)
 
 
 async def _poll_upstream() -> None:
-    """Background task: poll /readyz every POLL_INTERVAL_SECONDS seconds."""
+    """Poll /readyz forever, updating the module_healthy gauge."""
     async with httpx.AsyncClient() as client:
         while True:
             try:
@@ -55,22 +49,17 @@ async def _poll_upstream() -> None:
             await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
-_poll_task: asyncio.Task | None = None
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _poll_task
-    _poll_task = asyncio.create_task(_poll_upstream())
+    task = asyncio.create_task(_poll_upstream())
     try:
         yield
     finally:
-        if _poll_task is not None:
-            _poll_task.cancel()
-            try:
-                await _poll_task
-            except asyncio.CancelledError:
-                pass
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
@@ -82,43 +71,25 @@ app = FastAPI(
 
 @app.get("/info")
 async def info():
-    """Return module identity: version string baked at image build time."""
     return {"version": WRAPPER_VERSION}
 
 
 @app.get("/health")
 async def health():
-    """Proxy upstream /readyz.
+    """Proxy upstream /readyz: 200 → 200, anything else → 503.
 
-    Returns HTTP 200 when upstream is ready, 503 otherwise. The upstream
-    status code is included in the body for debuggability.
+    The upstream status code is included in the body for debuggability.
     """
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(UPSTREAM_READYZ, timeout=POLL_TIMEOUT_SECONDS)
-        if resp.status_code == 200:
-            return Response(
-                content=f"upstream status: {resp.status_code}",
-                status_code=200,
-                media_type="text/plain",
-            )
-        return Response(
-            content=f"upstream status: {resp.status_code}",
-            status_code=503,
-            media_type="text/plain",
-        )
     except Exception as exc:
-        return Response(
-            content=f"upstream unreachable: {exc}",
-            status_code=503,
-            media_type="text/plain",
-        )
+        return PlainTextResponse(f"upstream unreachable: {exc}", status_code=503)
+
+    status = 200 if resp.status_code == 200 else 503
+    return PlainTextResponse(f"upstream status: {resp.status_code}", status_code=status)
 
 
 @app.get("/metrics")
 async def metrics():
-    """Expose Prometheus text metrics including module_healthy gauge."""
-    return PlainTextResponse(
-        content=generate_latest().decode("utf-8"),
-        media_type=CONTENT_TYPE_LATEST,
-    )
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

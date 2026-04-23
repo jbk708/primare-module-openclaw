@@ -19,9 +19,12 @@
     # `reasoning: true` tells OpenClaw to consume message.reasoning_content
     # (deepseek-style split; brain + hauhau emit it, coder does not).
     openclaw_provider_models: "{{ openclaw_provider_models | default([
-      {'id': 'brain',   'name': 'Qwen3.5-122B Brain',                         'api': 'openai-completions', 'reasoning': true},
-      {'id': 'coder',   'name': 'Qwen3-Coder-Next',                            'api': 'openai-completions'},
-      {'id': 'hauhau',  'name': 'Qwen3.5-35B Hauhau (uncensored — internal)',  'api': 'openai-completions', 'reasoning': true},
+      {'id': 'brain',  'name': 'Qwen3.5-122B Brain',
+       'api': 'openai-completions', 'reasoning': true},
+      {'id': 'coder',  'name': 'Qwen3-Coder-Next',
+       'api': 'openai-completions'},
+      {'id': 'hauhau', 'name': 'Qwen3.5-35B Hauhau (uncensored — internal)',
+       'api': 'openai-completions', 'reasoning': true},
     ]) }}"
 
     # Default agent created on first run.
@@ -39,6 +42,9 @@
     openclaw_discord_guilds: "{{ openclaw_discord_guilds | default({}) }}"
 
     # Log-metrics scraper (T11-1) paths.
-    openclaw_log_metrics_script_path: "{{ openclaw_log_metrics_script_path | default('/usr/local/bin/openclaw-log-metrics.sh') }}"
+    openclaw_log_metrics_script_path: "{{ openclaw_log_metrics_script_path
+      | default('/usr/local/bin/openclaw-log-metrics.sh') }}"
     openclaw_log_metrics_lookback: "{{ openclaw_log_metrics_lookback | default('2m') }}"
-    openclaw_log_metrics_textfile_dir: "{{ openclaw_log_metrics_textfile_dir | default(node_exporter_textfile_dir | default('/var/lib/node_exporter/textfile_collector')) }}"
+    openclaw_log_metrics_textfile_dir: "{{ openclaw_log_metrics_textfile_dir
+      | default(node_exporter_textfile_dir
+      | default('/var/lib/node_exporter/textfile_collector')) }}"
