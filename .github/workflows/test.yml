@@ -1,0 +1,44 @@
+# Test & Coverage — Reusable workflow
+# Runs on PRs and pushes to main/staging
+
+name: Test & Coverage
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+  workflow_call: {}
+
+jobs:
+  pytest:
+    name: pytest (${{ matrix.os }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/uv
+          key: ${{ runner.os }}-uv-deps-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-deps-
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      - name: Run pytest with coverage
+        run: uv run --no-sync pytest tests/unit/ --cov=src --cov-report=term-missing --cov-fail-under=80
