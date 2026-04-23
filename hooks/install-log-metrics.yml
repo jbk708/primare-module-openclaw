@@ -1,0 +1,45 @@
+# install-log-metrics.yml — install the log-based metrics scraper (T11-1).
+#
+# Copies the shell script and templates the two systemd units. The script
+# writes token-mismatch and session-bloat gauges to the node_exporter
+# textfile_collector directory every minute. Alerts are defined in
+# primare-infra's roles/prometheus/templates/alert-rules.yml.j2 (openclaw group).
+#
+# Hook assets (shipped flat under hooks/ in the GitHub release):
+#   hooks/openclaw-log-metrics.sh
+#   hooks/openclaw-log-metrics.service.j2
+#   hooks/openclaw-log-metrics.timer.j2
+#
+# The role fetches all release assets (except the reserved platform artefacts)
+# into {{ role_path }}/files/.fetched-hooks/{{ module_name }}/hooks/ on the
+# Ansible controller, so we reference them by that path.
+- name: "openclaw | install-log-metrics — copy scraper script to head node"
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/.fetched-hooks/{{ module_name }}/hooks/openclaw-log-metrics.sh"
+    dest: "{{ openclaw_log_metrics_script_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "openclaw | install-log-metrics — template systemd service unit"
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/.fetched-hooks/{{ module_name }}/hooks/openclaw-log-metrics.service.j2"
+    dest: /etc/systemd/system/openclaw-log-metrics.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: "openclaw | install-log-metrics — template systemd timer unit"
+  ansible.builtin.template:
+    src: "{{ role_path }}/files/.fetched-hooks/{{ module_name }}/hooks/openclaw-log-metrics.timer.j2"
+    dest: /etc/systemd/system/openclaw-log-metrics.timer
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: "openclaw | install-log-metrics — enable and start timer"
+  ansible.builtin.systemd:
+    name: openclaw-log-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
