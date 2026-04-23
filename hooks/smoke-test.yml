@@ -1,0 +1,35 @@
+# smoke-test.yml — post-deploy smoke test for OpenClaw.
+#
+# Two checks:
+#   1. Poll /readyz until 200 (max 60 s — 30 retries × 2 s delay).
+#   2. `openclaw agents list` shows openclaw_default_agent_id in the output.
+- name: "openclaw | smoke-test — wait for /readyz to return 200"
+  ansible.builtin.uri:
+    url: "http://localhost:18789/readyz"
+    status_code: 200
+  register: _openclaw_ready
+  until: _openclaw_ready.status == 200
+  retries: 30
+  delay: 2
+
+- name: "openclaw | smoke-test — list agents and assert default agent present"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ module_name }}"
+      - openclaw
+      - agents
+      - list
+  register: _openclaw_agents
+  changed_when: false
+
+- name: "openclaw | smoke-test — assert default agent ID appears in agents list"
+  ansible.builtin.assert:
+    that:
+      - openclaw_default_agent_id in _openclaw_agents.stdout
+    fail_msg: >-
+      openclaw agents list did not contain agent ID '{{ openclaw_default_agent_id }}'.
+      Full output: {{ _openclaw_agents.stdout }}
+      This usually means the create-default-agent hook failed silently, or
+      OpenClaw restarted and lost state. Check `docker logs {{ module_name }}`.
