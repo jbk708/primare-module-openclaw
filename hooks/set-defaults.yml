@@ -1,0 +1,44 @@
+# set-defaults.yml — establish openclaw-scoped defaults as Ansible facts.
+#
+# This is the first pre_up hook so all subsequent hooks can reference these
+# facts without re-declaring vars: blocks. Override any value by passing an
+# Ansible extravar with the same name at deploy time.
+#
+# Ported from ansible/roles/openclaw/defaults/main.yml (primare-infra).
+- name: "openclaw | set-defaults — establish hook-scoped default facts"
+  ansible.builtin.set_fact:
+    # Directories on the head node (mounted into the container).
+    openclaw_config_dir: "{{ openclaw_config_dir | default('/opt/spark/openclaw/config') }}"
+    openclaw_workspace_dir: "{{ openclaw_workspace_dir | default('/opt/spark/openclaw/workspace') }}"
+
+    # LiteLLM provider — routes all inference through the local proxy.
+    openclaw_litellm_url: "{{ openclaw_litellm_url | default('http://litellm:4000/v1') }}"
+
+    # Model list — keep in sync with LiteLLM aliases in
+    # configs/litellm/config.yml and docs/reference/model-reference.md.
+    # `reasoning: true` tells OpenClaw to consume message.reasoning_content
+    # (deepseek-style split; brain + hauhau emit it, coder does not).
+    openclaw_provider_models: "{{ openclaw_provider_models | default([
+      {'id': 'brain',   'name': 'Qwen3.5-122B Brain',                         'api': 'openai-completions', 'reasoning': true},
+      {'id': 'coder',   'name': 'Qwen3-Coder-Next',                            'api': 'openai-completions'},
+      {'id': 'hauhau',  'name': 'Qwen3.5-35B Hauhau (uncensored — internal)',  'api': 'openai-completions', 'reasoning': true},
+    ]) }}"
+
+    # Default agent created on first run.
+    openclaw_default_agent_id: "{{ openclaw_default_agent_id | default('demo') }}"
+    openclaw_default_agent_model: "{{ openclaw_default_agent_model | default('spark-litellm/brain') }}"
+
+    # Control UI path prefix — served via Caddy at <domain>/claw.
+    openclaw_ui_base_path: "{{ openclaw_ui_base_path | default('/claw') }}"
+    openclaw_ui_allowed_origins: "{{ openclaw_ui_allowed_origins | default([
+      'http://localhost:18789',
+      'http://127.0.0.1:18789',
+    ]) }}"
+
+    # Discord — leave empty to skip Discord config entirely.
+    openclaw_discord_guilds: "{{ openclaw_discord_guilds | default({}) }}"
+
+    # Log-metrics scraper (T11-1) paths.
+    openclaw_log_metrics_script_path: "{{ openclaw_log_metrics_script_path | default('/usr/local/bin/openclaw-log-metrics.sh') }}"
+    openclaw_log_metrics_lookback: "{{ openclaw_log_metrics_lookback | default('2m') }}"
+    openclaw_log_metrics_textfile_dir: "{{ openclaw_log_metrics_textfile_dir | default(node_exporter_textfile_dir | default('/var/lib/node_exporter/textfile_collector')) }}"
