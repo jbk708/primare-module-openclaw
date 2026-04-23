@@ -1,0 +1,30 @@
+# Security Scanning — Reusable workflow
+# Secrets scanning via TruffleHog (non-blocking)
+
+name: Security Scanning
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+  workflow_call: {}
+
+jobs:
+  trufflehog:
+    name: trufflehog
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified

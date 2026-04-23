@@ -1,0 +1,96 @@
+# Lint & Unit Tests — Reusable workflow
+# Runs on PRs and pushes to main/staging
+# All jobs must pass before merge
+
+name: Lint & Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+  workflow_call: {}
+
+jobs:
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      - name: Run yamllint
+        run: uv run --no-sync yamllint configs/ hooks/ .github/ hooks.yml
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: find hooks -name '*.sh' -exec shellcheck -S warning {} +
+
+  ruff:
+    name: ruff
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      - name: Run ruff check
+        run: uv run --no-sync ruff check .
+
+      - name: Run ruff format
+        run: uv run --no-sync ruff format . --check
+
+  pinned-tags:
+    name: pinned-tags
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check all image tags are pinned (no :latest)
+        run: |
+          if grep -q "image:.*:latest" Dockerfile docker-compose.yml 2>/dev/null; then
+            echo "Error: a Dockerfile or compose file uses :latest tag"
+            exit 1
+          fi
+          echo "All image tags are pinned"
+
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dev dependencies
+        run: uv sync --extra dev
+
+      - name: Run unit tests
+        run: uv run --no-sync pytest tests/unit/ -v

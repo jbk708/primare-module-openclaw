@@ -1,0 +1,24 @@
+# persist-gateway-token.yml — write OPENCLAW_GATEWAY_TOKEN and DISCORD_BOT_TOKEN
+# to the compose .env.
+#
+# The compose .env is the source of truth at container-recreate time. Without
+# OPENCLAW_GATEWAY_TOKEN, `docker compose up` (manual restart, reboot, out-of-
+# band recreate) falls back to the image's baked-in "placeholder" default,
+# causing the token-mismatch symptom documented in primare-infra PR #15.
+#
+# DISCORD_BOT_TOKEN is written even when Discord is unconfigured so OpenClaw
+# reads it as a SecretRef (source: env) rather than storing it verbatim in
+# openclaw.json — keeps the config file non-secret.
+- name: "openclaw | persist-gateway-token — write token env vars to compose .env"
+  ansible.builtin.lineinfile:
+    path: "{{ module_compose_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    owner: primare-admin
+    group: primare-admin
+    mode: "0600"
+    create: false
+  loop:
+    - {key: OPENCLAW_GATEWAY_TOKEN, value: "{{ openclaw_gateway_token }}"}
+    - {key: DISCORD_BOT_TOKEN, value: "{{ openclaw_discord_bot_token }}"}
+  no_log: true

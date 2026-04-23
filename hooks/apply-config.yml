@@ -1,0 +1,37 @@
+# apply-config.yml — apply OpenClaw configuration in a single batch-JSON call.
+#
+# Everything is applied atomically so the config file gets one write and
+# OpenClaw reloads once. Using `openclaw config set --batch-json` rather than
+# hand-rolling openclaw.json avoids schema drift across upstream releases.
+- name: "openclaw | apply-config — batch-JSON config set (LiteLLM provider, Control UI, agent defaults)"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ module_name }}"
+      - openclaw
+      - config
+      - set
+      - --batch-json
+      - "{{ _openclaw_config_batch | to_json }}"
+  vars:
+    _openclaw_config_batch:
+      - path: models.mode
+        value: merge
+      - path: models.providers.spark-litellm.baseUrl
+        value: "{{ openclaw_litellm_url }}"
+      - path: models.providers.spark-litellm.apiKey
+        value: "{{ openclaw_litellm_key }}"
+      - path: models.providers.spark-litellm.api
+        value: openai-completions
+      - path: models.providers.spark-litellm.models
+        value: "{{ openclaw_provider_models }}"
+      - path: agents.defaults.model
+        value: "{{ openclaw_default_agent_model }}"
+      - path: gateway.controlUi.basePath
+        value: "{{ openclaw_ui_base_path }}"
+      - path: gateway.controlUi.allowedOrigins
+        value: "{{ openclaw_ui_allowed_origins }}"
+  register: _openclaw_config
+  changed_when: "'Updated' in _openclaw_config.stdout"
+  no_log: true

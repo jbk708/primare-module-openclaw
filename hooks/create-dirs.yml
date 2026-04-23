@@ -1,0 +1,14 @@
+# create-dirs.yml — create config and workspace directories on the head node.
+#
+# UID 1000 matches the node user inside the OpenClaw container so the process
+# can read/write its own config and workspace without running as root.
+- name: "openclaw | create-dirs — config + workspace directories (UID 1000)"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0750"
+  loop:
+    - "{{ openclaw_config_dir }}"
+    - "{{ openclaw_workspace_dir }}"

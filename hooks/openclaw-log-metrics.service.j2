@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenClaw log metrics scraper (node_exporter textfile collector)
+Documentation=https://github.com/jbk708/primare-infra/blob/main/docs/operations/troubleshooting-guide.md
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ openclaw_log_metrics_script_path }}
+Environment=LOOKBACK={{ openclaw_log_metrics_lookback }}
+Environment=TEXTFILE_COLLECTOR_DIR={{ openclaw_log_metrics_textfile_dir }}
+StandardOutput=journal
+StandardError=journal

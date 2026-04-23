@@ -1,0 +1,23 @@
+# hooks.yml — primare-module-openclaw hook manifest.
+#
+# Each list item is a PATH (relative to repo root) to an Ansible task file.
+# The primare-infra generic module role (T12-18) fetches every hooks/* asset
+# from the release and include_tasks's each path below in order.
+#
+# Secrets flow via Ansible extravars at deploy time — they are never stored
+# in this file. Required extravars:
+#   openclaw_gateway_token
+#   openclaw_litellm_key
+#   openclaw_discord_bot_token  (only consumed by configure-discord + bind hooks)
+pre_up:
+  - hooks/set-defaults.yml
+  - hooks/assert-secrets.yml
+  - hooks/persist-gateway-token.yml
+  - hooks/create-dirs.yml
+post_up:
+  - hooks/apply-config.yml
+  - hooks/create-default-agent.yml
+  - hooks/configure-discord.yml
+  - hooks/bind-discord-agent.yml
+  - hooks/install-log-metrics.yml
+  - hooks/smoke-test.yml

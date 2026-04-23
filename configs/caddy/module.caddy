@@ -1,0 +1,13 @@
+# Rendered by primare-infra roles/module/ (T12-3) from the module's
+# caddy.snippet release asset. Auth is enforced at the Cloudflare Access
+# edge per the caddy_auth value in ansible/modules.yml; this snippet
+# defines a named snippet to be imported inside each customer's site block
+# that exposes this module (see docs/services/adding-a-module.md Phase 4).
+#
+# Matches the existing @claw routing in
+# roles/caddy/templates/customer-example.caddy.j2 (lines 31-46).
+(module_openclaw) {
+    handle_path {{ path_prefix }}/* {
+        reverse_proxy {{ module_name }}:{{ module_port }}
+    }
+}

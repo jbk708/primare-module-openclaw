@@ -1,0 +1,31 @@
+# configure-discord.yml — enable the Discord channel and whitelist guilds.
+#
+# Skipped entirely when openclaw_discord_guilds is empty (default: {}).
+# The DISCORD_BOT_TOKEN is stored as a SecretRef (source: env) so that
+# openclaw.json never contains the plaintext token — the container reads it
+# from the environment variable written by persist-gateway-token.yml.
+- name: "openclaw | configure-discord — set discord channel config (guilds + token)"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ module_name }}"
+      - openclaw
+      - config
+      - set
+      - --batch-json
+      - "{{ _openclaw_discord_batch | to_json }}"
+  vars:
+    _openclaw_discord_batch:
+      - path: channels.discord.enabled
+        value: true
+      - path: channels.discord.token
+        value:
+          source: env
+          provider: default
+          id: DISCORD_BOT_TOKEN
+      - path: channels.discord.guilds
+        value: "{{ openclaw_discord_guilds }}"
+  when: openclaw_discord_guilds | length > 0
+  register: _openclaw_discord
+  changed_when: "'Updated' in _openclaw_discord.stdout"
