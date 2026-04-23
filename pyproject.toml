@@ -1,0 +1,21 @@
+[project]
+name = "primare-module-openclaw"
+version = "2026.4.14-1"
+description = "Wrapper image module packaging OpenClaw as a first-class primare-infra module."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.109.0",
+    "httpx>=0.27,<0.29",
+    "prometheus-client>=0.20,<0.22",
+    "uvicorn[standard]>=0.27,<0.35",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.4", "pytest>=8.0", "pytest-asyncio>=0.23", "pytest-cov", "httpx", "yamllint>=1.35"]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src", "src.primare_module_openclaw"]
