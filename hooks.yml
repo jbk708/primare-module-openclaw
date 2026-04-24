@@ -3,6 +3,12 @@
 # Changelog (bump this block on every hook-file change so hooks_sha256 shifts —
 # the module role gates re-fetch on hooks.yml's hash alone, not on the
 # referenced task files' hashes):
+#   v2026.4.14-6 — all docker exec calls run as -u node so openclaw CLI writes
+#                  config to /home/node/.openclaw (where the gateway reads from)
+#                  instead of /root/.openclaw (where root's docker exec would
+#                  otherwise land it). Silently broke apply-config + discord +
+#                  agent hooks in v-1..v-5 — config changes never reached the
+#                  gateway's actual config file.
 #   v2026.4.14-5 — smoke-test /readyz poll via `docker exec curl` instead of
 #                  localhost:18789 (port 18789 is container-internal; no host
 #                  publish per T12-11 "Caddy is sole ingress").

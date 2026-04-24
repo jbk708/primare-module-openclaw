@@ -9,6 +9,8 @@
     argv:
       - docker
       - exec
+      - -u
+      - node
       - "{{ module_name }}"
       - openclaw
       - config
