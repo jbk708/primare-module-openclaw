@@ -3,14 +3,22 @@
 # Two checks:
 #   1. Poll /readyz until 200 (max 60 s — 30 retries × 2 s delay).
 #   2. `openclaw agents list` shows openclaw_default_agent_id in the output.
-- name: "openclaw | smoke-test — wait for /readyz to return 200"
-  ansible.builtin.uri:
-    url: "http://localhost:18789/readyz"
-    status_code: 200
+- name: "openclaw | smoke-test — wait for upstream /readyz to return 200 (via docker exec — port 18789 is container-internal)"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ module_name }}"
+      - curl
+      - -fsS
+      - -o
+      - /dev/null
+      - http://localhost:18789/readyz
   register: _openclaw_ready
-  until: _openclaw_ready.status == 200
+  until: _openclaw_ready.rc == 0
   retries: 30
   delay: 2
+  changed_when: false
 
 - name: "openclaw | smoke-test — list agents and assert default agent present"
   ansible.builtin.command:
