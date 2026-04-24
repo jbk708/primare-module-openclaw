@@ -34,6 +34,11 @@ COPY src/ ./src/
 # -----------------------------------------------------------------------------
 FROM ghcr.io/openclaw/openclaw:2026.4.14
 
+# Upstream image sets USER=node (uid 1000); apt-get needs root. Stay as root
+# for the final image — supervisord runs as root and drops privs for
+# [program:openclaw] via its user=node directive (see configs/supervisord.conf).
+USER root
+
 # supervisor: process-level restart policy for both upstream and shim.
 # curl: required by HEALTHCHECK.
 RUN apt-get update \
