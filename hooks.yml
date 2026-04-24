@@ -3,6 +3,9 @@
 # Changelog (bump this block on every hook-file change so hooks_sha256 shifts —
 # the module role gates re-fetch on hooks.yml's hash alone, not on the
 # referenced task files' hashes):
+#   v2026.4.14-5 — smoke-test /readyz poll via `docker exec curl` instead of
+#                  localhost:18789 (port 18789 is container-internal; no host
+#                  publish per T12-11 "Caddy is sole ingress").
 #   v2026.4.14-2 — persist-gateway-token lineinfile create: true (first-deploy
 #                  .env did not exist); supervisord HOME/USER env (image).
 #   v2026.4.14-1 — initial release.
