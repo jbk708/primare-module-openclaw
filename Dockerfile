@@ -4,34 +4,23 @@
 # primare-infra module.
 #
 # Architecture:
-#   Stage 1 (builder)  — Python 3.12 slim + uv; builds the FastAPI shim venv.
-#   Stage 2 (runtime)  — FROM upstream openclaw image; installs supervisor;
-#                         copies shim venv in; runs both processes under
-#                         supervisord so Docker sees a single PID 1.
+#   Single-stage build on top of the upstream openclaw image. Installs Python
+#   3.11 + supervisor + curl, builds the FastAPI shim venv in place, and runs
+#   both the upstream gateway and the shim under supervisord so Docker sees a
+#   single PID 1.
+#
+#   A multi-stage build with a python:3.12-slim builder was attempted for
+#   v2026.4.14-1/-2 but two problems emerged: the upstream image is Debian
+#   bookworm (python 3.11, not 3.12), and uv's venv bakes an absolute shebang
+#   (`#!/app/.venv/bin/python`) into the entry-point scripts. Copying the venv
+#   across stages broke both python-version match and the shebang resolution.
+#   Building in the runtime stage avoids both issues; the image size cost is
+#   ~40 MB.
 #
 # Version scheme: <upstream-version>-<wrapper-revision>
 #   e.g. 2026.4.14-1 = openclaw upstream 2026.4.14, wrapper revision 1.
 #   Bump WRAPPER_VERSION ARG default + FROM tag together when upstream ships.
 
-# -----------------------------------------------------------------------------
-# Stage 1 — shim builder
-# -----------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
-
-RUN pip install --no-cache-dir uv
-
-WORKDIR /app
-
-COPY pyproject.toml uv.lock ./
-
-# Install shim dependencies into an isolated venv (no project itself needed).
-RUN uv sync --frozen --no-dev --no-install-project
-
-COPY src/ ./src/
-
-# -----------------------------------------------------------------------------
-# Stage 2 — runtime
-# -----------------------------------------------------------------------------
 FROM ghcr.io/openclaw/openclaw:2026.4.14
 
 # Upstream image sets USER=node (uid 1000); apt-get needs root. Stay as root
@@ -39,15 +28,27 @@ FROM ghcr.io/openclaw/openclaw:2026.4.14
 # [program:openclaw] via its user=node directive (see configs/supervisord.conf).
 USER root
 
+# python3 + python3-venv: needed for the shim venv build below.
 # supervisor: process-level restart policy for both upstream and shim.
 # curl: required by HEALTHCHECK.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends supervisor curl \
+    && apt-get install -y --no-install-recommends \
+         supervisor curl python3 python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy shim venv and source from builder.
-COPY --from=builder /app/.venv /opt/shim/.venv
-COPY --from=builder /app/src/primare_module_openclaw /opt/shim/primare_module_openclaw
+WORKDIR /opt/shim
+
+# Build shim venv in place — ensures Python version matches runtime and
+# shebangs in bin/ scripts resolve correctly after image build.
+RUN python3 -m venv /opt/shim/.venv \
+    && /opt/shim/.venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/shim/.venv/bin/pip install --no-cache-dir \
+         "fastapi>=0.109.0" \
+         "httpx>=0.27,<0.29" \
+         "prometheus-client>=0.20,<0.22" \
+         "uvicorn[standard]>=0.27,<0.35"
+
+COPY src/primare_module_openclaw /opt/shim/primare_module_openclaw
 
 # supervisord config — two [program:*] sections: openclaw + shim.
 COPY configs/supervisord.conf /etc/supervisor/conf.d/primare.conf
