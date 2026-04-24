@@ -17,7 +17,7 @@
     owner: primare-admin
     group: primare-admin
     mode: "0600"
-    create: false
+    create: true  # first-deploy .env does not exist yet (v2026.4.14-2)
   loop:
     - {key: OPENCLAW_GATEWAY_TOKEN, value: "{{ openclaw_gateway_token }}"}
     - {key: DISCORD_BOT_TOKEN, value: "{{ openclaw_discord_bot_token }}"}
