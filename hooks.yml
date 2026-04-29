@@ -1,8 +1,8 @@
 # hooks.yml — primare-module-openclaw hook manifest.
 #
-# Changelog (bump this block on every hook-file change so hooks_sha256 shifts —
-# the module role gates re-fetch on hooks.yml's hash alone, not on the
-# referenced task files' hashes):
+# Changelog (since primare-infra T13-20 the deploy role hashes the whole bundle
+# — hooks.yml + every file under hooks/ — so editing a sub-file alone is enough
+# to force a re-fetch on next deploy; this changelog is now purely human-facing):
 #   v2026.4.14-6 — all docker exec calls run as -u node so openclaw CLI writes
 #                  config to /home/node/.openclaw (where the gateway reads from)
 #                  instead of /root/.openclaw (where root's docker exec would
