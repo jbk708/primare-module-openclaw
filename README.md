@@ -96,8 +96,10 @@ ready to consume. The `v2026.4.14-1` tag is the first planned release.
 
 The CI `docker-build.yml` workflow fires on `v*` tags and:
 - Builds and pushes `ghcr.io/jbk708/primare-module-openclaw:<tag>` (amd64 + arm64).
-- Uploads `caddy.snippet`, `caddy.snippet.sha256`, `hooks.yml`, `hooks.yml.sha256`,
-  and all files under `hooks/` as GitHub release assets.
+- Uploads `caddy.snippet`, `caddy.snippet.sha256`, `hooks.yml`, `hooks.tree.sha256`,
+  and all files under `hooks/` as GitHub release assets. The tree hash covers the
+  whole hooks bundle (hooks.yml + hooks/*) so editing a sub-file alone invalidates
+  the deploy-side short-circuit (see primare-infra T13-20).
 
 ## Follow-up
 
