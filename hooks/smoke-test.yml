@@ -2,7 +2,15 @@
 #
 # Two checks:
 #   1. Poll /readyz until 200 (max 60 s — 30 retries × 2 s delay).
-#   2. `openclaw agents list` shows openclaw_default_agent_id in the output.
+#   2. Slurp + parse openclaw.json and assert openclaw_default_agent_id is in
+#      the agents list.
+#
+# Reads the config file directly rather than calling `openclaw agents list`
+# because the latter resolves every channel's SecretRef up-front
+# (buildProviderStatusIndex → resolveDiscordToken → assertSecretInputResolved).
+# A configured-but-not-bound Discord channel makes the CLI abort before
+# producing any output, even though the agent is correctly written to
+# openclaw.json. Same dodge already used in create-default-agent.yml.
 - name: "openclaw | smoke-test — poll upstream /readyz via docker exec"
   ansible.builtin.command:
     argv:
@@ -22,26 +30,21 @@
   delay: 2
   changed_when: false
 
-- name: "openclaw | smoke-test — list agents and assert default agent present"
-  ansible.builtin.command:
-    argv:
-      - docker
-      - exec
-      - -u
-      - node
-      - "{{ module_name }}"
-      - openclaw
-      - agents
-      - list
-  register: _openclaw_agents
-  changed_when: false
+- name: "openclaw | smoke-test — slurp openclaw.json to list configured agents"
+  ansible.builtin.slurp:
+    src: "{{ openclaw_config_dir }}/openclaw.json"
+  register: _openclaw_config_raw
 
-- name: "openclaw | smoke-test — assert default agent ID appears in agents list"
+- name: "openclaw | smoke-test — parse openclaw.json"
+  ansible.builtin.set_fact:
+    _openclaw_config_json: "{{ _openclaw_config_raw.content | b64decode | from_json }}"
+
+- name: "openclaw | smoke-test — assert default agent ID is in agents list"
   ansible.builtin.assert:
     that:
-      - openclaw_default_agent_id in _openclaw_agents.stdout
+      - openclaw_default_agent_id in (_openclaw_config_json.agents.list | default([]) | map(attribute='id') | list)
     fail_msg: >-
-      openclaw agents list did not contain agent ID '{{ openclaw_default_agent_id }}'.
-      Full output: {{ _openclaw_agents.stdout }}
+      openclaw.json agents.list did not contain agent ID '{{ openclaw_default_agent_id }}'.
+      Configured agent IDs: {{ _openclaw_config_json.agents.list | default([]) | map(attribute='id') | list }}.
       This usually means the create-default-agent hook failed silently, or
       OpenClaw restarted and lost state. Check `docker logs {{ module_name }}`.
